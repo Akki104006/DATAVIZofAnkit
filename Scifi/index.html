@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1950s Sci-Fi Movies Unit Chart</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fff8fc;
+      color: #2f1e2d;
+    }
+
+    .wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+      font-size: 28px;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 18px;
+      color: #6b4b61;
+    }
+
+    #chart {
+      border: 1px solid #ffd8e8;
+      border-radius: 12px;
+      background: white;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>1950s Sci-Fi Movies</h1>
+    <p>10 columns × 20 rows with 197 filled movie cells and 3 empty cells.</p>
+    <div id="chart"></div>
+  </div>
+
+  <script>
+    const chartDiv = document.getElementById('chart');
+    const columns = 10;
+    const rows = 20;
+    const cells = Array.from({ length: rows }, () => Array(columns).fill(0));
+    const labels = Array.from({ length: rows }, () => Array(columns).fill(''));
+    const hoverTexts = Array.from({ length: rows }, () => Array(columns).fill(''));
+
+    fetch('./scifi_dataset.csv')
+      .then((response) => response.text())
+      .then((text) => {
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        const movies = parsed.data.filter((item) => String(item.decade).trim() === '1950');
+        const selectedMovies = movies.slice(0, 197);
+        const annotations = [];
+
+        selectedMovies.forEach((movie, index) => {
+          const row = Math.floor(index / columns);
+          const col = index % columns;
+          if (row < rows && col < columns) {
+            cells[row][col] = 1;
+            const rawTitle = String(movie.title_year || 'Untitled movie');
+            const title = rawTitle.replace(/\s*\(\d{4}\)\s*$/, '').trim();
+            const year = rawTitle.match(/\((\d{4})\)/)?.[1] || 'Unknown';
+            const displayTitle = title.length > 11 ? `${title.slice(0, 10)}…` : title;
+            labels[row][col] = displayTitle;
+            hoverTexts[row][col] = `${title}<br>${year}`;
+            annotations.push({
+              x: col + 0.5,
+              y: row + 0.5,
+              xref: 'x',
+              yref: 'y',
+              text: displayTitle,
+              showarrow: false,
+              font: { size: 7, color: '#4b2f3a' },
+              bgcolor: 'rgba(255, 255, 255, 0.75)',
+              borderpad: 1
+            });
+          }
+        });
+
+        const data = [{
+          type: 'heatmap',
+          z: cells,
+          colorscale: [[0, 'rgba(255,255,255,0)'], [1, '#ff69b4']],
+          showscale: false,
+          hovertemplate: '%{hovertext}<extra></extra>',
+          xgap: 2,
+          ygap: 2,
+          hovertext: hoverTexts,
+          text: labels,
+          texttemplate: '%{text}'
+        }];
+
+        const layout = {
+          title: `1950 Era Movies: ${selectedMovies.length} filled cells`,
+          width: 780,
+          height: 1200,
+          margin: { t: 70, l: 40, r: 40, b: 40 },
+          xaxis: { visible: false, range: [0, columns] },
+          yaxis: { visible: false, range: [0, rows], autorange: 'reversed' },
+          paper_bgcolor: '#fff8fc',
+          plot_bgcolor: '#fff8fc',
+          annotations
+        };
+
+        Plotly.newPlot(chartDiv, data, layout);
+      })
+      .catch((error) => {
+        console.error(error);
+        chartDiv.innerHTML = '<p>Could not load the dataset.</p>';
+      });
+  </script>
+</body>
+</html>
